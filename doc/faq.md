@@ -160,3 +160,17 @@ WORKER_QUEUE=gitlab_test_cn
   GITHUB_ACCESS_TOKEN=your-access-token  #替换为你的Access Token
   ```
 
+### 如何添加自定义的LLM供应商？
+
+系统现已支持添加自定义的大语言模型供应商，只要该供应商提供兼容OpenAI的API接口。详细步骤如下：
+
+1. 在 `.env` 文件中，设置 `LLM_PROVIDER=custom`
+2. 配置以下环境变量：
+   ```
+   CUSTOM_API_KEY=sk-your-api-key
+   CUSTOM_API_BASE_URL=https://your-custom-api-endpoint/v1
+   CUSTOM_API_MODEL=your-model-name
+   ```
+
+详细说明和示例请参考[自定义供应商支持指南](./custom_vendor.md)。
+
