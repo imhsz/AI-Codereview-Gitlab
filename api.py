@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 
 from biz.gitlab.webhook_handler import slugify_url
-from biz.queue.worker import handle_merge_request_event, handle_push_event, handle_github_pull_request_event, handle_github_push_event
+from biz.queue.worker import handle_merge_request_event, handle_push_event, handle_github_pull_request_event, handle_github_push_event, handle_gitea_pull_request_event, handle_gitea_push_event
 from biz.service.review_service import ReviewService
 from biz.utils.im import notifier
 from biz.utils.log import logger
@@ -111,11 +111,14 @@ def handle_webhook():
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
 
-        # 判断是GitLab还是GitHub的webhook
+        # 判断是GitHub、GitLab还是Gitea的webhook
         webhook_source = request.headers.get('X-GitHub-Event')
+        gitea_event = request.headers.get('X-Gitea-Event')
         
         if webhook_source:  # GitHub webhook
             return handle_github_webhook(webhook_source, data)
+        elif gitea_event:  # Gitea webhook
+            return handle_gitea_webhook(gitea_event, data)
         else:  # GitLab webhook
             return handle_gitlab_webhook(data)
     else:
@@ -146,6 +149,47 @@ def handle_github_webhook(event_type, data):
         return jsonify({'message': f'GitHub request received(event_type={event_type}), will process asynchronously.'}), 200
     else:
         error_message = f'Only pull_request and push events are supported for GitHub webhook, but received: {event_type}.'
+        logger.error(error_message)
+        return jsonify(error_message), 400
+
+def handle_gitea_webhook(event_type, data):
+    # 获取Gitea配置
+    gitea_token = os.getenv('GITEA_ACCESS_TOKEN') or request.headers.get('X-Gitea-Token')
+    if not gitea_token:
+        return jsonify({'message': 'Missing Gitea access token'}), 400
+        
+    gitea_url = os.getenv('GITEA_URL') or request.headers.get('X-Gitea-Instance')
+    if not gitea_url:
+        repository = data.get('repository')
+        if not repository:
+            return jsonify({'message': 'Missing Gitea URL'}), 400
+        homepage = repository.get("html_url")
+        if not homepage:
+            return jsonify({'message': 'Missing Gitea URL'}), 400
+        try:
+            parsed_url = urlparse(homepage)
+            gitea_url = f"{parsed_url.scheme}://{parsed_url.netloc}/"
+        except Exception as e:
+            return jsonify({"error": f"Failed to parse homepage URL: {str(e)}"}), 400
+    
+    gitea_url_slug = slugify_url(gitea_url)
+    
+    # 打印整个payload数据
+    logger.info(f'Received Gitea event: {event_type}')
+    logger.info(f'Payload: {json.dumps(data)}')
+    
+    if event_type == "pull_request":
+        # 使用handle_queue进行异步处理
+        handle_queue(handle_gitea_pull_request_event, data, gitea_token, gitea_url, gitea_url_slug)
+        # 立马返回响应
+        return jsonify({'message': f'Gitea request received(event_type={event_type}), will process asynchronously.'}), 200
+    elif event_type == "push":
+        # 使用handle_queue进行异步处理
+        handle_queue(handle_gitea_push_event, data, gitea_token, gitea_url, gitea_url_slug)
+        # 立马返回响应
+        return jsonify({'message': f'Gitea request received(event_type={event_type}), will process asynchronously.'}), 200
+    else:
+        error_message = f'Only pull_request and push events are supported for Gitea webhook, but received: {event_type}.'
         logger.error(error_message)
         return jsonify(error_message), 400
 

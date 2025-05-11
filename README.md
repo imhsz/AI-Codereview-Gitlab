@@ -11,7 +11,7 @@
 - 📢 消息即时推送
   - 审查结果一键直达 钉钉、企业微信 或 飞书，代码问题无处可藏！
 - 📅 自动化日报生成
-  - 基于 GitLab & GitHub Commit 记录，自动整理每日开发进展，谁在摸鱼、谁在卷，一目了然 😼。
+  - 基于 GitLab & GitHub & Gitea Commit 记录，自动整理每日开发进展，谁在摸鱼、谁在卷，一目了然 😼。
 - 📊 可视化 Dashboard
   - 集中展示所有 Code Review 记录，项目统计、开发者统计，数据说话，甩锅无门！
 - 🎭 Review Style 任你选
@@ -123,29 +123,49 @@ python api.py
 streamlit run ui.py --server.port=5002 --server.address=0.0.0.0
 ```
 
-### 配置 GitLab Webhook
+### 配置 GitLab/GitHub/Gitea Webhook
 
 #### 1. 创建Access Token
 
-方法一：在 GitLab 个人设置中，创建一个 Personal Access Token。
+**GitLab:**
+- 方法一：在 GitLab 个人设置中，创建一个 Personal Access Token。
+- 方法二：在 GitLab 项目设置中，创建Project Access Token
 
-方法二：在 GitLab 项目设置中，创建Project Access Token
+**GitHub:**
+- 在 GitHub 个人设置中，创建一个 Personal Access Token。
+
+**Gitea:**
+- 在 Gitea 个人设置中，创建一个 Personal Access Token。
 
 #### 2. 配置 Webhook
 
+**GitLab:**
 在 GitLab 项目设置中，配置 Webhook：
-
 - URL：http://your-server-ip:5001/review/webhook
 - Trigger Events：勾选 Push Events 和 Merge Request Events (不要勾选其它Event)
 - Secret Token：上面配置的 Access Token(可选)
 
+**GitHub:**
+在 GitHub 项目设置中，配置 Webhook：
+- URL：http://your-server-ip:5001/review/webhook
+- Content type：application/json
+- Secret：上面配置的 Access Token(可选)
+- Events：选择 Push 和 Pull request 事件
+
+**Gitea:**
+在 Gitea 项目设置中，配置 Webhook：
+- URL：http://your-server-ip:5001/review/webhook
+- Content type：application/json
+- Secret：上面配置的 Access Token(可选)
+- Events：选择 Push 和 Pull request 事件
+
 **备注**
 
 1. Token使用优先级
-  - 系统优先使用 .env 文件中的 GITLAB_ACCESS_TOKEN。
-  - 如果 .env 文件中没有配置 GITLAB_ACCESS_TOKEN，则使用 Webhook 传递的Secret Token。
+  - 系统优先使用 .env 文件中的 ACCESS_TOKEN。
+  - 如果 .env 文件中没有配置 ACCESS_TOKEN，则使用 Webhook 传递的Secret Token。
 2. 网络访问要求
-  - 请确保 GitLab 能够访问本系统。
+  - 请确保 GitLab/GitHub/Gitea 能够访问本系统。
   - 若内网环境受限，建议将系统部署在外网服务器上。
 
 ### 配置消息推送
